@@ -7,7 +7,7 @@ $ brew install riscv-tools
 
 # installing qemu
 
-https://theintobooks.wordpress.com/2019/07/09/installing-risc-v-qemu-on-macos-mojave/ 
+brew install qemu
 
 
 
