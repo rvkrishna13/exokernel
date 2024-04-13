@@ -191,3 +191,6 @@ void            virtio_disk_intr(void);
 
 // testing
 void print_page_table();
+
+//stlb.c
+void			stlb_init(void);
