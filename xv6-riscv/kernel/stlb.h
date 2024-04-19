@@ -1,20 +1,18 @@
 #include "types.h"
 
-const int stlb_capacity = 100;
+static int stlb_capacity = 10;
 
 struct stlb_entry{
-	uint64 ppn;
-	uint64 vpn;
+	uint vpn;
+	pte_t pte;
+	struct stlb_entry *next;
+	struct stlb_entry *prev;
 };
 
-struct stlb{
-	struct stlb_entry *stlb_entries;
+struct stlb_cache{
+	struct spinlock lock;
+	struct stlb_entry stlbe;
+	struct stlb_entry *head;
+	struct stlb_entry *tail;
 	int size;
-	int clock;
-}stlb;
-
-void stlb_init(void);
-
-void stlb_initialize(void);
-
-void add_stlb_entry_add(uint64 ppn, uint64 vpn);
+};

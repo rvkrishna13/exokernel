@@ -194,3 +194,6 @@ void print_page_table();
 
 //stlb.c
 void			stlb_init(void);
+void 			traverse_stlb(void);
+void 			test_stlb(void);
+void 			test_map(void);

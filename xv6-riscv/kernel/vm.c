@@ -7,6 +7,7 @@
 #include "fs.h"
 #include "spinlock.h"
 #include "proc.h"
+#include "map.h"
 
 /*
  * the kernel's page table.
@@ -459,9 +460,12 @@ void print_page_table_recursive(pagetable_t pagetable, int level) {
 }
 
 void print_page_table() {
-    struct proc *p = myproc();
-    pagetable_t pagetable = p->pagetable;
+    // struct proc *p = myproc();
+    // pagetable_t pagetable = p->pagetable;
 
-    printf("Page Table Hierarchy:\n");
-    print_page_table_recursive(pagetable, 0);
+    // printf("Page Table Hierarchy:\n");
+    // print_page_table_recursive(pagetable, 0);
+    test_stlb();
+    traverse_stlb();
+    test_map(); 
 }
