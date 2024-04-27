@@ -1,0 +1,17 @@
+xv6-riscv/user/*.o
+xv6-riscv/user/*.d
+xv6-riscv/user/*.asm
+xv6-riscv/user/*.sym
+xv6-riscv/user/_*
+
+xv6-riscv/kernel/*.o
+xv6-riscv/kernel/*.d
+xv6-riscv/kernel/*.asm
+xv6-riscv/kernel/*.sym
+
+xv6-riscv/fs.img
+xv6-riscv/kernel/kernel
+xv6-riscv/mkfs/mkfs
+xv6-riscv/user/initcode
+xv6-riscv/user/initcode.out
+xv6-riscv/user/usys.S
