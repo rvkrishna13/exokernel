@@ -41,5 +41,8 @@ main()
     plicinithart();   // ask PLIC for device interrupts
   }
 
+  // printf("inside main for stlb\n");
+  // stlb_init();
+  // printf("end main stlb\n");
   scheduler();        
 }

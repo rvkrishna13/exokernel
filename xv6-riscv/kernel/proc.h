@@ -1,3 +1,7 @@
+#include "stlb.h"
+
+struct stlb_cache;
+
 // Saved registers for kernel context switches.
 struct context {
   uint64 ra;
@@ -104,4 +108,6 @@ struct proc {
   struct file *ofile[NOFILE];  // Open files
   struct inode *cwd;           // Current directory
   char name[16];               // Process name (debugging)
+  struct stlb_cache *stlb_cache;     // STLB cache
+  struct stlb_slab *stlb_slab_head; //Memory allocator for STLB cache entries
 };

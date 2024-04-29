@@ -125,12 +125,28 @@ found:
   p->pid = allocpid();
   p->state = USED;
 
+  if(p->pid>=3){
+    p->stlb_slab_head = (struct stlb_slab*)kalloc();
+    if(p->stlb_slab_head == NULL){
+      printf("Unable to initialise stlb slab allocator for pid %d\n", p->pid);
+    }else{
+      p->stlb_cache = (struct stlb_cache *)kalloc();
+      if (p->stlb_cache == NULL)
+        printf("unable to initialise stlb_cache for pid %d\n", p->pid);
+
+      stlb_init(p->stlb_cache);
+    }
+    printf("done with user process stlb allocation\n");
+  }else{
+    p->stlb_cache = NULL;
+  }
+
   // Allocate a trapframe page.
   if((p->trapframe = (struct trapframe *)kalloc()) == 0){
     freeproc(p);
     release(&p->lock);
     return 0;
-  }
+  } 
 
   // An empty user page table.
   p->pagetable = proc_pagetable(p);
@@ -146,6 +162,7 @@ found:
   p->context.ra = (uint64)forkret;
   p->context.sp = p->kstack + PGSIZE;
 
+  
   return p;
 }
 
@@ -158,6 +175,7 @@ freeproc(struct proc *p)
   if(p->trapframe)
     kfree((void*)p->trapframe);
   p->trapframe = 0;
+  // free_stlb(p->stlb_cache);
   if(p->pagetable)
     proc_freepagetable(p->pagetable, p->sz);
   p->pagetable = 0;

@@ -7,7 +7,7 @@
 #include "fs.h"
 #include "spinlock.h"
 #include "proc.h"
-#include "map.h"
+// #include "stlb.h"
 
 /*
  * the kernel's page table.
@@ -88,8 +88,21 @@ kvminithart()
 pte_t *
 walk(pagetable_t pagetable, uint64 va, int alloc)
 {
+  // printf("page wlak started for va 0x%x\n", va);
   if(va >= MAXVA)
     panic("walk");
+
+  // struct proc *p = myproc();
+  
+  // if(p!=NULL && p->stlb_cache!=NULL){
+  //   struct stlb_entry* stlbe = stlb_cache_contains(p->stlb_cache, va, NULL);
+  //   // printf("check if contains va 0x%x stlbe 0x%x\n", va, stlbe);
+  //   if(stlbe != NULL  && (*stlbe->pte & PTE_V))
+  //   {
+  //       printf("return from stlb with va 0x%x\n", va);;
+  //       return stlbe->pte;
+  //   }
+  // }
 
   for(int level = 2; level > 0; level--) {
     pte_t *pte = &pagetable[PX(level, va)];
@@ -102,6 +115,13 @@ walk(pagetable_t pagetable, uint64 va, int alloc)
       *pte = PA2PTE(pagetable) | PTE_V;
     }
   }
+
+  // if(p!=NULL && p->stlb_cache!=NULL && alloc!=0)
+  // {
+  //   printf("adding stlb entry va 0x%x pa 0x%x stlb 0x%x\n", va, &pagetable[PX(0, va)], p->stlb_cache);
+  //   add_stlb_entry(p->stlb_cache, p->stlb_slab_head, va, &pagetable[PX(0, va)]);
+  // }
+
   return &pagetable[PX(0, va)];
 }
 
@@ -111,13 +131,28 @@ walk(pagetable_t pagetable, uint64 va, int alloc)
 uint64
 walkaddr(pagetable_t pagetable, uint64 va)
 {
-  pte_t *pte;
+  pte_t *pte = NULL;
   uint64 pa;
 
   if(va >= MAXVA)
     return 0;
 
-  pte = walk(pagetable, va, 0);
+  struct proc *p = myproc();
+  
+  if(p!=NULL && p->stlb_cache!=NULL){
+    struct stlb_entry* stlbe = stlb_cache_contains(p->stlb_cache, va, NULL);
+    // printf("check if contains va 0x%x stlbe 0x%x\n", va, stlbe);
+    if(stlbe != NULL  && (*stlbe->pte & PTE_V))
+    {
+        printf("return from stlb with va 0x%x\n", va);;
+        pte = stlbe->pte;
+    }
+  }
+
+  if(pte==NULL)
+    pte = walk(pagetable, va, 0);
+
+  // pte = walk(pagetable, va, 0);
   if(pte == 0)
     return 0;
   if((*pte & PTE_V) == 0)
@@ -147,7 +182,7 @@ mappages(pagetable_t pagetable, uint64 va, uint64 size, uint64 pa, int perm)
 {
   uint64 a, last;
   pte_t *pte;
-
+  struct proc *p = myproc();
   if(size == 0)
     panic("mappages: size");
   
@@ -159,6 +194,11 @@ mappages(pagetable_t pagetable, uint64 va, uint64 size, uint64 pa, int perm)
     if(*pte & PTE_V)
       panic("mappages: remap");
     *pte = PA2PTE(pa) | perm | PTE_V;
+    if(p!=NULL && p->stlb_cache!=NULL)
+    {
+      printf("adding stlb entry va 0x%x pa 0x%x stlb 0x%x\n", va, &pagetable[PX(0, va)], p->stlb_cache);
+      add_stlb_entry(p->stlb_cache, p->stlb_slab_head, va, pte);
+    }
     if(a == last)
       break;
     a += PGSIZE;
@@ -175,11 +215,13 @@ uvmunmap(pagetable_t pagetable, uint64 va, uint64 npages, int do_free)
 {
   uint64 a;
   pte_t *pte;
-
+  struct proc *p = myproc();
   if((va % PGSIZE) != 0)
     panic("uvmunmap: not aligned");
 
   for(a = va; a < va + npages*PGSIZE; a += PGSIZE){
+    if(p!=NULL && p->stlb_cache!=NULL)
+      delete_entry_from_stlb(p->stlb_cache,a);
     if((pte = walk(pagetable, a, 0)) == 0)
       panic("uvmunmap: walk");
     if((*pte & PTE_V) == 0)
@@ -283,6 +325,7 @@ freewalk(pagetable_t pagetable)
       freewalk((pagetable_t)child);
       pagetable[i] = 0;
     } else if(pte & PTE_V){
+      printf("panic with 0x%x\n", pte);
       panic("freewalk: leaf");
     }
   }
@@ -460,12 +503,17 @@ void print_page_table_recursive(pagetable_t pagetable, int level) {
 }
 
 void print_page_table() {
+  // printf("inside print page table\n");
     // struct proc *p = myproc();
     // pagetable_t pagetable = p->pagetable;
 
     // printf("Page Table Hierarchy:\n");
     // print_page_table_recursive(pagetable, 0);
-    test_stlb();
-    traverse_stlb();
-    test_map(); 
+    // printf("print page table\n");
+    // test_stlb();
+    printf("system call\n");
+    printf("0x%x stlb size with id %d\n", myproc()->stlb_cache, myproc()->pid);
+    // traverse_stlb(myproc()->stlb_cache);
+
+    // test_map(); 
 }

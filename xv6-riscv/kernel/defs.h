@@ -8,6 +8,8 @@ struct spinlock;
 struct sleeplock;
 struct stat;
 struct superblock;
+struct stlb_cache;
+struct stlb_slab;
 
 // bio.c
 void            binit(void);
@@ -193,7 +195,13 @@ void            virtio_disk_intr(void);
 void print_page_table();
 
 //stlb.c
-void			stlb_init(void);
-void 			traverse_stlb(void);
+void			stlb_init(struct stlb_cache *);
+void 			traverse_stlb();
 void 			test_stlb(void);
-void 			test_map(void);
+struct stlb_entry* stlb_cache_contains(struct stlb_cache *,uint64 vpn, pte_t *);
+void 			add_stlb_entry(struct stlb_cache *, struct stlb_slab *, uint64 vpn, pte_t *pte);
+// int 			get_stlb_init(void);
+struct stlb_slab* stlb_slab_init(void);
+void start_stlb(struct stlb_cache *, struct stlb_slab *);
+void free_stlb(struct stlb_cache*);
+void delete_entry_from_stlb(struct stlb_cache *stlb_cache, uint64 vpn);
