@@ -7,6 +7,7 @@
 #include "fs.h"
 #include "spinlock.h"
 #include "proc.h"
+// #include "stlb.h"
 
 /*
  * the kernel's page table.
@@ -87,8 +88,21 @@ kvminithart()
 pte_t *
 walk(pagetable_t pagetable, uint64 va, int alloc)
 {
+  // printf("page wlak started for va 0x%x\n", va);
   if(va >= MAXVA)
     panic("walk");
+
+  // struct proc *p = myproc();
+  
+  // if(p!=NULL && p->stlb_cache!=NULL){
+  //   struct stlb_entry* stlbe = stlb_cache_contains(p->stlb_cache, va, NULL);
+  //   // printf("check if contains va 0x%x stlbe 0x%x\n", va, stlbe);
+  //   if(stlbe != NULL  && (*stlbe->pte & PTE_V))
+  //   {
+  //       printf("return from stlb with va 0x%x\n", va);;
+  //       return stlbe->pte;
+  //   }
+  // }
 
   for(int level = 2; level > 0; level--) {
     pte_t *pte = &pagetable[PX(level, va)];
@@ -101,6 +115,13 @@ walk(pagetable_t pagetable, uint64 va, int alloc)
       *pte = PA2PTE(pagetable) | PTE_V;
     }
   }
+
+  // if(p!=NULL && p->stlb_cache!=NULL && alloc!=0)
+  // {
+  //   printf("adding stlb entry va 0x%x pa 0x%x stlb 0x%x\n", va, &pagetable[PX(0, va)], p->stlb_cache);
+  //   add_stlb_entry(p->stlb_cache, p->stlb_slab_head, va, &pagetable[PX(0, va)]);
+  // }
+
   return &pagetable[PX(0, va)];
 }
 
@@ -108,15 +129,30 @@ walk(pagetable_t pagetable, uint64 va, int alloc)
 // or 0 if not mapped.
 // Can only be used to look up user pages.
 uint64
-walkaddr(pagetable_t pagetable, uint64 va)
+walkaddr(struct proc *proc, pagetable_t pagetable, uint64 va)
 {
-  pte_t *pte;
+  pte_t *pte = NULL;
   uint64 pa;
 
   if(va >= MAXVA)
     return 0;
+  
+  if(proc!=NULL && proc->stlb_cache!=NULL){
+    struct stlb_entry* stlbe = stlb_cache_contains(proc->stlb_cache, va, NULL);
+    // printf("check if contains va 0x%x stlbe 0x%x\n", va, stlbe);
+    proc->stlb_total = proc->stlb_total+1;
+    if(stlbe != NULL  && (*stlbe->pte & PTE_V))
+    {
+        // printf("return from stlb with va 0x%x\n", va);
+        proc->stlb_hits = proc->stlb_hits+1;
+        pte = stlbe->pte;
+    }
+  }
 
-  pte = walk(pagetable, va, 0);
+  if(pte==NULL)
+    pte = walk(pagetable, va, 0);
+
+  // pte = walk(pagetable, va, 0);
   if(pte == 0)
     return 0;
   if((*pte & PTE_V) == 0)
@@ -133,7 +169,7 @@ walkaddr(pagetable_t pagetable, uint64 va)
 void
 kvmmap(pagetable_t kpgtbl, uint64 va, uint64 pa, uint64 sz, int perm)
 {
-  if(mappages(kpgtbl, va, sz, pa, perm) != 0)
+  if(mappages(NULL, kpgtbl, va, sz, pa, perm) != 0)
     panic("kvmmap");
 }
 
@@ -142,11 +178,11 @@ kvmmap(pagetable_t kpgtbl, uint64 va, uint64 pa, uint64 sz, int perm)
 // be page-aligned. Returns 0 on success, -1 if walk() couldn't
 // allocate a needed page-table page.
 int
-mappages(pagetable_t pagetable, uint64 va, uint64 size, uint64 pa, int perm)
+mappages(struct proc *proc, pagetable_t pagetable, uint64 va, uint64 size, uint64 pa, int perm)
 {
   uint64 a, last;
   pte_t *pte;
-
+  
   if(size == 0)
     panic("mappages: size");
   
@@ -158,6 +194,11 @@ mappages(pagetable_t pagetable, uint64 va, uint64 size, uint64 pa, int perm)
     if(*pte & PTE_V)
       panic("mappages: remap");
     *pte = PA2PTE(pa) | perm | PTE_V;
+    if(proc!=NULL && proc->stlb_cache!=NULL)
+    {
+      // printf("adding stlb entry va 0x%x pa 0x%x stlb 0x%x\n", va, pte, p->stlb_cache);
+      add_stlb_entry(proc->stlb_cache, va, pte);
+    }
     if(a == last)
       break;
     a += PGSIZE;
@@ -174,11 +215,13 @@ uvmunmap(pagetable_t pagetable, uint64 va, uint64 npages, int do_free)
 {
   uint64 a;
   pte_t *pte;
-
+  struct proc *p = myproc();
   if((va % PGSIZE) != 0)
     panic("uvmunmap: not aligned");
 
   for(a = va; a < va + npages*PGSIZE; a += PGSIZE){
+    if(p!=NULL && p->stlb_cache!=NULL)
+      delete_entry_from_stlb(p->stlb_cache,a);
     if((pte = walk(pagetable, a, 0)) == 0)
       panic("uvmunmap: walk");
     if((*pte & PTE_V) == 0)
@@ -210,7 +253,7 @@ uvmcreate()
 // for the very first process.
 // sz must be less than a page.
 void
-uvmfirst(pagetable_t pagetable, uchar *src, uint sz)
+uvmfirst(struct proc *proc, pagetable_t pagetable, uchar *src, uint sz)
 {
   char *mem;
 
@@ -218,14 +261,14 @@ uvmfirst(pagetable_t pagetable, uchar *src, uint sz)
     panic("uvmfirst: more than a page");
   mem = kalloc();
   memset(mem, 0, PGSIZE);
-  mappages(pagetable, 0, PGSIZE, (uint64)mem, PTE_W|PTE_R|PTE_X|PTE_U);
+  mappages(proc, pagetable, 0, PGSIZE, (uint64)mem, PTE_W|PTE_R|PTE_X|PTE_U);
   memmove(mem, src, sz);
 }
 
 // Allocate PTEs and physical memory to grow process from oldsz to
 // newsz, which need not be page aligned.  Returns new size or 0 on error.
 uint64
-uvmalloc(pagetable_t pagetable, uint64 oldsz, uint64 newsz, int xperm)
+uvmalloc(struct proc *proc, pagetable_t pagetable, uint64 oldsz, uint64 newsz, int xperm)
 {
   char *mem;
   uint64 a;
@@ -241,7 +284,7 @@ uvmalloc(pagetable_t pagetable, uint64 oldsz, uint64 newsz, int xperm)
       return 0;
     }
     memset(mem, 0, PGSIZE);
-    if(mappages(pagetable, a, PGSIZE, (uint64)mem, PTE_R|PTE_U|xperm) != 0){
+    if(mappages(proc, pagetable, a, PGSIZE, (uint64)mem, PTE_R|PTE_U|xperm) != 0){
       kfree(mem);
       uvmdealloc(pagetable, a, oldsz);
       return 0;
@@ -282,7 +325,8 @@ freewalk(pagetable_t pagetable)
       freewalk((pagetable_t)child);
       pagetable[i] = 0;
     } else if(pte & PTE_V){
-      panic("freewalk: leaf");
+      // printf("panic with 0x%x\n", pte);
+      // panic("freewalk: leaf");
     }
   }
   kfree((void*)pagetable);
@@ -305,7 +349,7 @@ uvmfree(pagetable_t pagetable, uint64 sz)
 // returns 0 on success, -1 on failure.
 // frees any allocated pages on failure.
 int
-uvmcopy(pagetable_t old, pagetable_t new, uint64 sz)
+uvmcopy(pagetable_t old, pagetable_t new, struct proc *proc, uint64 sz)
 {
   pte_t *pte;
   uint64 pa, i;
@@ -322,7 +366,7 @@ uvmcopy(pagetable_t old, pagetable_t new, uint64 sz)
     if((mem = kalloc()) == 0)
       goto err;
     memmove(mem, (char*)pa, PGSIZE);
-    if(mappages(new, i, PGSIZE, (uint64)mem, flags) != 0){
+    if(mappages(proc, new, i, PGSIZE, (uint64)mem, flags) != 0){
       kfree(mem);
       goto err;
     }
@@ -351,13 +395,13 @@ uvmclear(pagetable_t pagetable, uint64 va)
 // Copy len bytes from src to virtual address dstva in a given page table.
 // Return 0 on success, -1 on error.
 int
-copyout(pagetable_t pagetable, uint64 dstva, char *src, uint64 len)
+copyout(struct proc *proc, pagetable_t pagetable, uint64 dstva, char *src, uint64 len)
 {
   uint64 n, va0, pa0;
 
   while(len > 0){
     va0 = PGROUNDDOWN(dstva);
-    pa0 = walkaddr(pagetable, va0);
+    pa0 = walkaddr(proc, pagetable, va0);
     if(pa0 == 0)
       return -1;
     n = PGSIZE - (dstva - va0);
@@ -376,13 +420,13 @@ copyout(pagetable_t pagetable, uint64 dstva, char *src, uint64 len)
 // Copy len bytes to dst from virtual address srcva in a given page table.
 // Return 0 on success, -1 on error.
 int
-copyin(pagetable_t pagetable, char *dst, uint64 srcva, uint64 len)
+copyin(struct proc *proc, pagetable_t pagetable, char *dst, uint64 srcva, uint64 len)
 {
   uint64 n, va0, pa0;
 
   while(len > 0){
     va0 = PGROUNDDOWN(srcva);
-    pa0 = walkaddr(pagetable, va0);
+    pa0 = walkaddr(proc,pagetable, va0);
     if(pa0 == 0)
       return -1;
     n = PGSIZE - (srcva - va0);
@@ -402,14 +446,14 @@ copyin(pagetable_t pagetable, char *dst, uint64 srcva, uint64 len)
 // until a '\0', or max.
 // Return 0 on success, -1 on error.
 int
-copyinstr(pagetable_t pagetable, char *dst, uint64 srcva, uint64 max)
+copyinstr(struct proc *proc, pagetable_t pagetable, char *dst, uint64 srcva, uint64 max)
 {
   uint64 n, va0, pa0;
   int got_null = 0;
 
   while(got_null == 0 && max > 0){
     va0 = PGROUNDDOWN(srcva);
-    pa0 = walkaddr(pagetable, va0);
+    pa0 = walkaddr(proc, pagetable, va0);
     if(pa0 == 0)
       return -1;
     n = PGSIZE - (srcva - va0);
@@ -459,9 +503,17 @@ void print_page_table_recursive(pagetable_t pagetable, int level) {
 }
 
 void print_page_table() {
-    struct proc *p = myproc();
-    pagetable_t pagetable = p->pagetable;
+  // printf("inside print page table\n");
+    // struct proc *p = myproc();
+    // pagetable_t pagetable = p->pagetable;
 
-    printf("Page Table Hierarchy:\n");
-    print_page_table_recursive(pagetable, 0);
+    // printf("Page Table Hierarchy:\n");
+    // print_page_table_recursive(pagetable, 0);
+    // printf("print page table\n");
+    // test_stlb();
+    // printf("system call\n");
+    // printf("0x%x stlb size with id %d\n", myproc()->stlb_cache, myproc()->pid);
+    traverse_stlb(myproc()->stlb_cache);
+
+    // test_map(); 
 }

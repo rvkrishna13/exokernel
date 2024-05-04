@@ -37,7 +37,7 @@ void
 usertrap(void)
 {
   int which_dev = 0;
-
+  uint64 cause = r_scause();
   if((r_sstatus() & SSTATUS_SPP) != 0)
     panic("usertrap: not from user mode");
 
@@ -49,8 +49,22 @@ usertrap(void)
   
   // save user program counter.
   p->trapframe->epc = r_sepc();
-  
-  if(r_scause() == 8){
+  if(cause==14){
+    int handle = pagefault_handler();
+    if(!handle){
+      printf("usertrap(): unexpected scause %p pid=%d\n", cause, p->pid);
+      printf("            sepc=%p stval=%p\n", r_sepc(), r_stval());
+      setkilled(p);
+    }
+  } else if(cause==15)
+  {
+    int handle = pagefault_handler();
+    if(!handle){
+      printf("usertrap(): unexpected scause %p pid=%d\n", cause, p->pid);
+      printf("            sepc=%p stval=%p\n", r_sepc(), r_stval());
+      setkilled(p);
+    }
+  } else if(cause == 8){
     // system call
 
     if(killed(p))

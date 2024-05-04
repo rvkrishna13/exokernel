@@ -8,7 +8,7 @@
 #include "spinlock.h"
 #include "riscv.h"
 #include "defs.h"
-
+int count=0;
 void freerange(void *pa_start, void *pa_end);
 
 extern char end[]; // first address after kernel.
@@ -26,8 +26,10 @@ struct {
 void
 kinit()
 {
+  printf("kinit start\n");
   initlock(&kmem.lock, "kmem");
   freerange(end, (void*)PHYSTOP);
+  printf("kinit end\n");
 }
 
 void
@@ -68,6 +70,7 @@ kfree(void *pa)
 void *
 kalloc(void)
 {
+  // printf("kalloc count %d\n", ++count);
   struct run *r;
 
   acquire(&kmem.lock);
@@ -75,7 +78,7 @@ kalloc(void)
   if(r)
     kmem.freelist = r->next;
   release(&kmem.lock);
-
+  // printf("kalloc count %d 0x%x 0x%x\n", ++count, (uint64)r, (uint64)r->next);
   if(r)
     memset((char*)r, 5, PGSIZE); // fill with junk
   return (void*)r;

@@ -1,20 +1,26 @@
 #include "types.h"
 
-const int stlb_capacity = 100;
+#define STLB_SLAB_SIZE 300
+#define STLB_CAPACITY 300
 
 struct stlb_entry{
-	uint64 ppn;
 	uint64 vpn;
+	pte_t *pte;
+	struct stlb_entry *next;
+	struct stlb_entry *prev;
 };
 
-struct stlb{
-	struct stlb_entry *stlb_entries;
+struct stlb_cache{
+	struct spinlock lock;
+	struct stlb_entry stlbe;
+	struct stlb_entry *head;
+	struct stlb_entry *tail;
 	int size;
-	int clock;
-}stlb;
+};
 
-void stlb_init(void);
-
-void stlb_initialize(void);
-
-void add_stlb_entry_add(uint64 ppn, uint64 vpn);
+struct stlb_slab {
+    struct stlb_entry entries[STLB_SLAB_SIZE];
+    int free_count;
+    struct stlb_entry *free_list;
+    struct stlb_slab *next;
+};
