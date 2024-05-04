@@ -437,11 +437,13 @@ sys_exec(void)
   char path[MAXPATH], *argv[MAXARG];
   int i;
   uint64 uargv, uarg;
+  int use_stlb_cache = 0;
 
   argaddr(1, &uargv);
   if(argstr(0, path, MAXPATH) < 0) {
     return -1;
   }
+  argint(1, &use_stlb_cache);
   memset(argv, 0, sizeof(argv));
   for(i=0;; i++){
     if(i >= NELEM(argv)){
@@ -461,7 +463,7 @@ sys_exec(void)
       goto bad;
   }
 
-  int ret = exec(path, argv);
+  int ret = exec(path, argv, use_stlb_cache);
 
   for(i = 0; i < NELEM(argv) && argv[i] != 0; i++)
     kfree(argv[i]);
@@ -493,8 +495,8 @@ sys_pipe(void)
     fileclose(wf);
     return -1;
   }
-  if(copyout(p->pagetable, fdarray, (char*)&fd0, sizeof(fd0)) < 0 ||
-     copyout(p->pagetable, fdarray+sizeof(fd0), (char *)&fd1, sizeof(fd1)) < 0){
+  if(copyout(p, p->pagetable, fdarray, (char*)&fd0, sizeof(fd0)) < 0 ||
+     copyout(p, p->pagetable, fdarray+sizeof(fd0), (char *)&fd1, sizeof(fd1)) < 0){
     p->ofile[fd0] = 0;
     p->ofile[fd1] = 0;
     fileclose(rf);

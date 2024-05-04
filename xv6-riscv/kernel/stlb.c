@@ -86,10 +86,14 @@ void stlb_init(struct stlb_cache *stlb_cache){
 	initlock(&stlb_cache->lock, "stlb_cache");
 	stlb_cache->head = NULL;
 	stlb_cache->tail = NULL;
-	stlb_slab_init();
+	stlb_cache->size = 0;
+	// stlb_slab_init();
 }
 
 void delete_entry_from_stlb(struct stlb_cache *stlb_cache, uint64 vpn){
+
+	if(stlb_cache==NULL)
+		return;
 	struct stlb_entry *curr = stlb_cache->head;
 	while(curr!=NULL){
 		if(curr->vpn == vpn){
@@ -107,7 +111,7 @@ void delete_entry_from_stlb(struct stlb_cache *stlb_cache, uint64 vpn){
 				curr->prev->next = curr->next;
 				curr->next->prev = curr->prev;
 			}
-			kfree(curr);
+		kfree(curr);
 			return;
 		}
 		curr = curr->next;
@@ -125,12 +129,15 @@ void free_stlb(struct stlb_cache *stlb_cache){
 	}
 }
 
-struct stlb_entry* stlb_cache_contains(struct stlb_cache *stlb_cache,uint64 vpn, pte_t *pte){	
+struct stlb_entry* stlb_cache_contains(struct stlb_cache *stlb_cache, uint64 vpn, pte_t *pte){	
+	if(stlb_cache==NULL)
+		return NULL;
 	struct stlb_entry *curr = stlb_cache->head;
+	int i=0;
 	while(curr!=NULL){
 		if(curr->vpn==vpn)
 		{
-			if(pte)
+			if(pte!=NULL)
 				curr->pte = pte;
 			if(curr==stlb_cache->head)
 				return curr;
@@ -143,6 +150,7 @@ struct stlb_entry* stlb_cache_contains(struct stlb_cache *stlb_cache,uint64 vpn,
 			return curr;
 		}
 		curr = curr->next;
+		i++;
 	}
 	return NULL;
 }
@@ -162,15 +170,15 @@ void add_entry_when_full(struct stlb_cache *stlb_cache, uint64 vpn, pte_t *pte){
 	}
 }
 
-void add_entry(struct stlb_cache *stlb_cache, struct stlb_slab *stlb_slab_head, uint64 vpn, pte_t *pte){
+void add_entry(struct stlb_cache *stlb_cache, uint64 vpn, pte_t *pte){
 	// struct stlb_entry *stlbe = stlb_slab_alloc(stlb_slab_head);
-	if(vpn==3000)
-	{
-		if(t==NULL)
-		t = (struct stlb_entry*)kalloc();
-		t->vpn = vpn;
-		t->pte = pte;
-	}
+	// if(vpn==3000)
+	// {
+	// 	if(t==NULL)
+	// 	t = (struct stlb_entry*)kalloc();
+	// 	t->vpn = vpn;
+	// 	t->pte = pte;
+	// }
 	struct stlb_entry *stlbe = (struct stlb_entry*)kalloc();
 	if (stlbe == NULL) {
 		return;
@@ -178,26 +186,26 @@ void add_entry(struct stlb_cache *stlb_cache, struct stlb_slab *stlb_slab_head, 
 	stlbe->vpn = vpn;
 	stlbe->pte = pte;
 	if(stlb_cache->head==NULL){
-		stlb_cache->size = 1;
 		stlbe->next = NULL;
 		stlb_cache->tail = stlbe;
 	}else{
-		stlb_cache->size = stlb_cache->size+1;
 		stlbe->next = stlb_cache->head;
 		stlb_cache->head->prev = stlbe;
 	}
+	stlb_cache->size = stlb_cache->size+1;
 	stlbe->prev = NULL;
 	stlb_cache->head = stlbe;
+	return;
 }
 
-void add_stlb_entry(struct stlb_cache *stlb_cache, struct stlb_slab *stlb_slab_head, uint64 vpn, pte_t *pte){
+void add_stlb_entry(struct stlb_cache *stlb_cache, uint64 vpn, pte_t *pte){
 	
 	struct stlb_entry *curr = stlb_cache_contains(stlb_cache, vpn, pte);
 	if(curr!=NULL)
 		return;
 
 	if(stlb_cache->head==NULL || (stlb_cache->size < STLB_CAPACITY))
-		add_entry(stlb_cache, stlb_slab_head, vpn,pte);
+		add_entry(stlb_cache, vpn,pte);
 	else
 		add_entry_when_full(stlb_cache,vpn,pte);
 }
@@ -206,23 +214,16 @@ void traverse_stlb(struct stlb_cache *stlb_cache){
 	if(!stlb_cache)
 		return;
 	struct stlb_entry *curr = stlb_cache->head;
+	int i=0;
 	while(curr!=NULL){
-		printf("0x%x, 0x%x\n", curr->vpn, curr->pte);
+		printf("0x%x, 0x%x\n", curr->vpn, *curr->pte);
 		curr = curr->next;
+		i++;
 	}
-}
-
-void start_stlb(struct stlb_cache *stlb_cache, struct stlb_slab *stlb_slab_head){
-	printf("starting stlb`123\n");
-	stlb_cache = (struct stlb_cache *)kalloc();
-	stlb_slab_head = stlb_slab_init();
-	stlb_init(stlb_cache);
-	printf("end of stlb`123\n");
 }
 
 void test_stlb(){
 	struct stlb_cache *stlb_cache = (struct stlb_cache *)kalloc();
-	struct stlb_slab *stlb_slab_head = (struct stlb_slab*)kalloc();
 	// start_stlb();
 	// printf("stlb cache 0x%x\n", stlb_cache);
 	
@@ -230,7 +231,7 @@ void test_stlb(){
 	printf("start adding entries\n");
 	for(int i=1; i<=10; i++){
 		printf("adding entry with vpn %d\n",i);
-		add_stlb_entry(stlb_cache, stlb_slab_head, i%5,NULL);
+		add_stlb_entry(stlb_cache, i%5,NULL);
 	}
 	// traverse_stlb(stlb_cache);
 }

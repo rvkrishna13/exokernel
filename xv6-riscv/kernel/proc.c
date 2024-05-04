@@ -124,19 +124,14 @@ allocproc(void)
 found:
   p->pid = allocpid();
   p->state = USED;
-
+  p->stlb_hits = 0;
+  p->stlb_total = 0;
   if(p->pid>=3){
-    p->stlb_slab_head = (struct stlb_slab*)kalloc();
-    if(p->stlb_slab_head == NULL){
-      printf("Unable to initialise stlb slab allocator for pid %d\n", p->pid);
-    }else{
-      p->stlb_cache = (struct stlb_cache *)kalloc();
-      if (p->stlb_cache == NULL)
-        printf("unable to initialise stlb_cache for pid %d\n", p->pid);
-
+    p->stlb_cache = (struct stlb_cache *)kalloc();
+    if (p->stlb_cache == NULL)
+      printf("unable to initialise stlb_cache for pid %d\n", p->pid);
+    else
       stlb_init(p->stlb_cache);
-    }
-    printf("done with user process stlb allocation\n");
   }else{
     p->stlb_cache = NULL;
   }
@@ -172,6 +167,8 @@ found:
 static void
 freeproc(struct proc *p)
 {
+  if(p->stlb_hits > 0)
+    printf("PID : %d total stlb_hits : %d from stlb_search : %d\n", p->pid, p->stlb_hits, p->stlb_total);
   if(p->trapframe)
     kfree((void*)p->trapframe);
   p->trapframe = 0;
@@ -181,12 +178,19 @@ freeproc(struct proc *p)
   p->pagetable = 0;
   p->sz = 0;
   p->pid = 0;
+  p->stlb_hits = 0;
+  p->stlb_total = 0;
   p->parent = 0;
   p->name[0] = 0;
   p->chan = 0;
   p->killed = 0;
   p->xstate = 0;
   p->state = UNUSED;
+  
+  if(p->stlb_cache!=NULL){
+    kfree(p->stlb_cache);
+    p->stlb_cache = NULL;
+  }
 }
 
 // Create a user page table for a given process, with no user memory,
@@ -205,7 +209,7 @@ proc_pagetable(struct proc *p)
   // at the highest user virtual address.
   // only the supervisor uses it, on the way
   // to/from user space, so not PTE_U.
-  if(mappages(pagetable, TRAMPOLINE, PGSIZE,
+  if(mappages(p, pagetable, TRAMPOLINE, PGSIZE,
               (uint64)trampoline, PTE_R | PTE_X) < 0){
     uvmfree(pagetable, 0);
     return 0;
@@ -213,7 +217,7 @@ proc_pagetable(struct proc *p)
 
   // map the trapframe page just below the trampoline page, for
   // trampoline.S.
-  if(mappages(pagetable, TRAPFRAME, PGSIZE,
+  if(mappages(p, pagetable, TRAPFRAME, PGSIZE,
               (uint64)(p->trapframe), PTE_R | PTE_W) < 0){
     uvmunmap(pagetable, TRAMPOLINE, 1, 0);
     uvmfree(pagetable, 0);
@@ -257,7 +261,7 @@ userinit(void)
   
   // allocate one user page and copy initcode's instructions
   // and data into it.
-  uvmfirst(p->pagetable, initcode, sizeof(initcode));
+  uvmfirst(p, p->pagetable, initcode, sizeof(initcode));
   p->sz = PGSIZE;
 
   // prepare for the very first "return" from kernel to user.
@@ -282,7 +286,7 @@ growproc(int n)
 
   sz = p->sz;
   if(n > 0){
-    if((sz = uvmalloc(p->pagetable, sz, sz + n, PTE_W)) == 0) {
+    if((sz = uvmalloc(p, p->pagetable, sz, sz + n, PTE_W)) == 0) {
       return -1;
     }
   } else if(n < 0){
@@ -307,7 +311,7 @@ fork(void)
   }
 
   // Copy user memory from parent to child.
-  if(uvmcopy(p->pagetable, np->pagetable, p->sz) < 0){
+  if(uvmcopy(p->pagetable, np->pagetable, np, p->sz) < 0){
     freeproc(np);
     release(&np->lock);
     return -1;
@@ -426,7 +430,7 @@ wait(uint64 addr)
         if(pp->state == ZOMBIE){
           // Found one.
           pid = pp->pid;
-          if(addr != 0 && copyout(p->pagetable, addr, (char *)&pp->xstate,
+          if(addr != 0 && copyout(p, p->pagetable, addr, (char *)&pp->xstate,
                                   sizeof(pp->xstate)) < 0) {
             release(&pp->lock);
             release(&wait_lock);
@@ -648,7 +652,7 @@ either_copyout(int user_dst, uint64 dst, void *src, uint64 len)
 {
   struct proc *p = myproc();
   if(user_dst){
-    return copyout(p->pagetable, dst, src, len);
+    return copyout(p, p->pagetable, dst, src, len);
   } else {
     memmove((char *)dst, src, len);
     return 0;
@@ -663,7 +667,7 @@ either_copyin(void *dst, int user_src, uint64 src, uint64 len)
 {
   struct proc *p = myproc();
   if(user_src){
-    return copyin(p->pagetable, dst, src, len);
+    return copyin(p, p->pagetable, dst, src, len);
   } else {
     memmove(dst, (char*)src, len);
     return 0;

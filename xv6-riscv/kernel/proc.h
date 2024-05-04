@@ -109,5 +109,6 @@ struct proc {
   struct inode *cwd;           // Current directory
   char name[16];               // Process name (debugging)
   struct stlb_cache *stlb_cache;     // STLB cache
-  struct stlb_slab *stlb_slab_head; //Memory allocator for STLB cache entries
+  int stlb_hits;
+  int stlb_total;
 };

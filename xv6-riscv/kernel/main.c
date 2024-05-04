@@ -28,6 +28,9 @@ main()
     iinit();         // inode table
     fileinit();      // file table
     virtio_disk_init(); // emulated hard disk
+    // uint64 satp_val = 0;
+    // satp_val |= (1UL << 63);  // Set MODE field to bare mode (no translation)
+    // asm volatile("csrw satp, %0" : : "r" (satp_val));
     userinit();      // first user process
     __sync_synchronize();
     started = 1;

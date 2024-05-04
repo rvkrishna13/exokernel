@@ -25,7 +25,7 @@ void            consoleintr(int);
 void            consputc(int);
 
 // exec.c
-int             exec(char*, char**);
+int             exec(char*, char**, int);
 
 // file.c
 struct file*    filealloc(void);
@@ -161,20 +161,20 @@ int             uartgetc(void);
 void            kvminit(void);
 void            kvminithart(void);
 void            kvmmap(pagetable_t, uint64, uint64, uint64, int);
-int             mappages(pagetable_t, uint64, uint64, uint64, int);
+int             mappages(struct proc *, pagetable_t, uint64, uint64, uint64, int);
 pagetable_t     uvmcreate(void);
-void            uvmfirst(pagetable_t, uchar *, uint);
-uint64          uvmalloc(pagetable_t, uint64, uint64, int);
+void            uvmfirst(struct proc*, pagetable_t, uchar *, uint);
+uint64          uvmalloc(struct proc *, pagetable_t, uint64, uint64, int);
 uint64          uvmdealloc(pagetable_t, uint64, uint64);
-int             uvmcopy(pagetable_t, pagetable_t, uint64);
+int             uvmcopy(pagetable_t, pagetable_t,struct proc *, uint64);
 void            uvmfree(pagetable_t, uint64);
 void            uvmunmap(pagetable_t, uint64, uint64, int);
 void            uvmclear(pagetable_t, uint64);
 pte_t *         walk(pagetable_t, uint64, int);
-uint64          walkaddr(pagetable_t, uint64);
-int             copyout(pagetable_t, uint64, char *, uint64);
-int             copyin(pagetable_t, char *, uint64, uint64);
-int             copyinstr(pagetable_t, char *, uint64, uint64);
+uint64          walkaddr(struct proc *, pagetable_t, uint64);
+int             copyout(struct proc *, pagetable_t, uint64, char *, uint64);
+int             copyin(struct proc*, pagetable_t, char *, uint64, uint64);
+int             copyinstr(struct proc*, pagetable_t, char *, uint64, uint64);
 
 // plic.c
 void            plicinit(void);
@@ -199,9 +199,14 @@ void			stlb_init(struct stlb_cache *);
 void 			traverse_stlb();
 void 			test_stlb(void);
 struct stlb_entry* stlb_cache_contains(struct stlb_cache *,uint64 vpn, pte_t *);
-void 			add_stlb_entry(struct stlb_cache *, struct stlb_slab *, uint64 vpn, pte_t *pte);
-// int 			get_stlb_init(void);
+void 			add_stlb_entry(struct stlb_cache *, uint64 vpn, pte_t *pte);
 struct stlb_slab* stlb_slab_init(void);
-void start_stlb(struct stlb_cache *, struct stlb_slab *);
-void free_stlb(struct stlb_cache*);
-void delete_entry_from_stlb(struct stlb_cache *stlb_cache, uint64 vpn);
+void 			free_stlb(struct stlb_cache*);
+void 			delete_entry_from_stlb(struct stlb_cache *stlb_cache, uint64 vpn);
+
+//Page fault handler
+int pagefault_handler(void);
+
+//Kmalloc
+void			kmfree(void *);
+void*			kmalloc(uint);

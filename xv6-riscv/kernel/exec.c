@@ -7,7 +7,7 @@
 #include "defs.h"
 #include "elf.h"
 
-static int loadseg(pde_t *, uint64, struct inode *, uint, uint);
+static int loadseg(struct proc *, pde_t *, uint64, struct inode *, uint, uint);
 
 int flags2perm(int flags)
 {
@@ -19,9 +19,26 @@ int flags2perm(int flags)
     return perm;
 }
 
+int atoi(const char *s) {
+    int n = 0, neg = 0;
+
+    if (*s == '-') { // Check if negative number
+        neg = 1;
+        s++;
+    }
+
+    while ('0' <= *s && *s <= '9') {
+        n = 10 * n + (*s - '0');
+        s++;
+    }
+
+    return neg ? -n : n;
+}
+
 int
-exec(char *path, char **argv)
+exec(char *path, char **argv, int use_stlb_cache)
 {
+  printf("exec command %d\n", use_stlb_cache);
   char *s, *last;
   int i, off;
   uint64 argc, sz = 0, sp, ustack[MAXARG], stackbase;
@@ -30,7 +47,23 @@ exec(char *path, char **argv)
   struct proghdr ph;
   pagetable_t pagetable = 0, oldpagetable;
   struct proc *p = myproc();
-
+  for(int i=0; argv[i]!=0; i++)
+  {
+    if(strncmp(argv[i], "use_stlb=", 9) == 0) {
+        use_stlb_cache = atoi(argv[i] + 9);  // Convert the value after "use_stlb=" to int
+        break;
+    }
+  }
+  if(use_stlb_cache==0){
+    if(p->stlb_cache!=NULL)
+    {
+      free_stlb(p->stlb_cache);
+      kfree(p->stlb_cache);
+      p->stlb_cache = NULL;
+      p->stlb_hits = 0;
+      p->stlb_total = 0;
+    }
+  }
   begin_op();
 
   if((ip = namei(path)) == 0){
@@ -62,10 +95,10 @@ exec(char *path, char **argv)
     if(ph.vaddr % PGSIZE != 0)
       goto bad;
     uint64 sz1;
-    if((sz1 = uvmalloc(pagetable, sz, ph.vaddr + ph.memsz, flags2perm(ph.flags))) == 0)
+    if((sz1 = uvmalloc(p, pagetable, sz, ph.vaddr + ph.memsz, flags2perm(ph.flags))) == 0)
       goto bad;
     sz = sz1;
-    if(loadseg(pagetable, ph.vaddr, ip, ph.off, ph.filesz) < 0)
+    if(loadseg(p, pagetable, ph.vaddr, ip, ph.off, ph.filesz) < 0)
       goto bad;
   }
   iunlockput(ip);
@@ -74,13 +107,12 @@ exec(char *path, char **argv)
 
   p = myproc();
   uint64 oldsz = p->sz;
-
   // Allocate two pages at the next page boundary.
   // Make the first inaccessible as a stack guard.
   // Use the second as the user stack.
   sz = PGROUNDUP(sz);
   uint64 sz1;
-  if((sz1 = uvmalloc(pagetable, sz, sz + 2*PGSIZE, PTE_W)) == 0)
+  if((sz1 = uvmalloc(p, pagetable, sz, sz + 2*PGSIZE, PTE_W)) == 0)
     goto bad;
   sz = sz1;
   uvmclear(pagetable, sz-2*PGSIZE);
@@ -95,7 +127,7 @@ exec(char *path, char **argv)
     sp -= sp % 16; // riscv sp must be 16-byte aligned
     if(sp < stackbase)
       goto bad;
-    if(copyout(pagetable, sp, argv[argc], strlen(argv[argc]) + 1) < 0)
+    if(copyout(p, pagetable, sp, argv[argc], strlen(argv[argc]) + 1) < 0)
       goto bad;
     ustack[argc] = sp;
   }
@@ -106,7 +138,7 @@ exec(char *path, char **argv)
   sp -= sp % 16;
   if(sp < stackbase)
     goto bad;
-  if(copyout(pagetable, sp, (char *)ustack, (argc+1)*sizeof(uint64)) < 0)
+  if(copyout(p, pagetable, sp, (char *)ustack, (argc+1)*sizeof(uint64)) < 0)
     goto bad;
 
   // arguments to user main(argc, argv)
@@ -145,13 +177,13 @@ exec(char *path, char **argv)
 // and the pages from va to va+sz must already be mapped.
 // Returns 0 on success, -1 on failure.
 static int
-loadseg(pagetable_t pagetable, uint64 va, struct inode *ip, uint offset, uint sz)
+loadseg(struct proc *proc, pagetable_t pagetable, uint64 va, struct inode *ip, uint offset, uint sz)
 {
   uint i, n;
   uint64 pa;
 
   for(i = 0; i < sz; i += PGSIZE){
-    pa = walkaddr(pagetable, va + i);
+    pa = walkaddr(proc, pagetable, va + i);
     if(pa == 0)
       panic("loadseg: address should exist");
     if(sz - i < PGSIZE)
