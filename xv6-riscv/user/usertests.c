@@ -3076,6 +3076,16 @@ drivetests(int quick, int continuous, char *justone) {
 }
 
 int
+strncmp(const char *p, const char *q, uint n)
+{
+  while(n > 0 && *p && *p == *q)
+    n--, p++, q++;
+  if(n == 0)
+    return 0;
+  return (uchar)*p - (uchar)*q;
+}
+
+int
 main(int argc, char *argv[])
 {
   int continuous = 0;
@@ -3088,9 +3098,7 @@ main(int argc, char *argv[])
     continuous = 1;
   } else if(argc == 2 && strcmp(argv[1], "-C") == 0){
     continuous = 2;
-  } else if(argc == 2 && argv[1][0] != '-'){
-    justone = argv[1];
-  } else if(argc > 1){
+  } else if(argc > 1 && strncmp(argv[1],"use_stlb=",9)!=0){
     printf("Usage: usertests [-c] [-C] [-q] [testname]\n");
     exit(1);
   }

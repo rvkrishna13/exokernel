@@ -443,7 +443,7 @@ sys_exec(void)
   if(argstr(0, path, MAXPATH) < 0) {
     return -1;
   }
-  argint(1, &use_stlb_cache);
+  
   memset(argv, 0, sizeof(argv));
   for(i=0;; i++){
     if(i >= NELEM(argv)){

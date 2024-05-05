@@ -107,7 +107,7 @@ allocpid()
 // and return with p->lock held.
 // If there are no free procs, or a memory allocation fails, return 0.
 static struct proc*
-allocproc(void)
+allocproc(int use_stlb)
 {
   struct proc *p;
 
@@ -126,6 +126,7 @@ found:
   p->state = USED;
   p->stlb_hits = 0;
   p->stlb_total = 0;
+  p->use_stlb = use_stlb;
   if(p->pid>=3){
     p->stlb_cache = (struct stlb_cache *)kalloc();
     if (p->stlb_cache == NULL)
@@ -256,7 +257,7 @@ userinit(void)
 {
   struct proc *p;
 
-  p = allocproc();
+  p = allocproc(0);
   initproc = p;
   
   // allocate one user page and copy initcode's instructions
@@ -306,7 +307,7 @@ fork(void)
   struct proc *p = myproc();
 
   // Allocate process.
-  if((np = allocproc()) == 0){
+  if((np = allocproc(p->use_stlb)) == 0){
     return -1;
   }
 
