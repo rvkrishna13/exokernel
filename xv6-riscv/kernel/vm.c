@@ -137,7 +137,7 @@ walkaddr(struct proc *proc, pagetable_t pagetable, uint64 va)
   if(va >= MAXVA)
     return 0;
   
-  if(proc!=NULL && proc->stlb_cache!=NULL){
+  if(proc!=NULL && proc->use_stlb && proc->stlb_cache!=NULL){
     struct stlb_entry* stlbe = stlb_cache_contains(proc->stlb_cache, va, NULL);
     // printf("check if contains va 0x%x stlbe 0x%x\n", va, stlbe);
     proc->stlb_total = proc->stlb_total+1;
@@ -194,7 +194,7 @@ mappages(struct proc *proc, pagetable_t pagetable, uint64 va, uint64 size, uint6
     if(*pte & PTE_V)
       panic("mappages: remap");
     *pte = PA2PTE(pa) | perm | PTE_V;
-    if(proc!=NULL && proc->stlb_cache!=NULL)
+    if(proc!=NULL && proc->use_stlb && proc->stlb_cache!=NULL)
     {
       // printf("adding stlb entry va 0x%x pa 0x%x stlb 0x%x\n", va, pte, p->stlb_cache);
       add_stlb_entry(proc->stlb_cache, va, pte);

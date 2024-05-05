@@ -38,7 +38,7 @@ int atoi(const char *s) {
 int
 exec(char *path, char **argv, int use_stlb_cache)
 {
-  printf("exec command %d\n", use_stlb_cache);
+  // printf("exec command %d\n", use_stlb_cache);
   char *s, *last;
   int i, off;
   uint64 argc, sz = 0, sp, ustack[MAXARG], stackbase;
@@ -63,6 +63,8 @@ exec(char *path, char **argv, int use_stlb_cache)
       p->stlb_hits = 0;
       p->stlb_total = 0;
     }
+  }else{
+    p->use_stlb = 1;
   }
   begin_op();
 

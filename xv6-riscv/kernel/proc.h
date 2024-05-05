@@ -111,4 +111,5 @@ struct proc {
   struct stlb_cache *stlb_cache;     // STLB cache
   int stlb_hits;
   int stlb_total;
+  int use_stlb;
 };
