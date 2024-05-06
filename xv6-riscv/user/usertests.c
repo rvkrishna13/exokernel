@@ -3086,7 +3086,8 @@ main(int argc, char *argv[])
   int continuous = 0;
   int quick = 0;
   char *justone = 0;
-
+  int start,end;
+  start = uptime();
   if(argc == 2 && strcmp(argv[1], "-q") == 0){
     quick = 1;
   } else if(argc == 2 && strcmp(argv[1], "-c") == 0){
@@ -3101,5 +3102,7 @@ main(int argc, char *argv[])
     exit(1);
   }
   printf("ALL TESTS PASSED\n");
+  end = uptime();
+  printf("Time taken : %d ticks\n", end-start);
   exit(0);
 }
