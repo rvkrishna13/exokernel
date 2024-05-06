@@ -1,4 +1,10 @@
 #include "types.h"
+#include "param.h"
+#include "memlayout.h"
+#include "spinlock.h"
+#include "riscv.h"
+#include "proc.h"
+#include "defs.h"
 
 void*
 memset(void *dst, int c, uint n)
@@ -38,6 +44,7 @@ memmove(void *dst, const void *src, uint n)
   
   s = src;
   d = dst;
+
   if(s < d && s + n > d){
     s += n;
     d += n;
@@ -46,7 +53,7 @@ memmove(void *dst, const void *src, uint n)
   } else
     while(n-- > 0)
       *d++ = *s++;
-
+ 
   return dst;
 }
 

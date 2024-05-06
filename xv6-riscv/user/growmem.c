@@ -1,6 +1,7 @@
 #include<kernel/syscall.h>
 #include "kernel/types.h"
 #include "user/user.h"
+#include "kernel/lib_os.h"
 
 int main(){
     int size = 4096*10;

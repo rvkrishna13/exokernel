@@ -5,6 +5,8 @@
 #include "memlayout.h"
 #include "spinlock.h"
 #include "proc.h"
+#include "lib_os.h"
+#include "free_functions.h"
 
 uint64
 sys_exit(void)
@@ -95,3 +97,15 @@ sys_dump_page_table(void){
   print_page_table();
   return 0;
 }
+
+uint64
+sys_set_va_pa_map(void){
+	int x;
+	argint(0, &x);
+	printf("GG got into sys call %d\n", x);
+	myproc()->pp_map_node->func = func_list[x];
+	return 0;
+}
+
+
+

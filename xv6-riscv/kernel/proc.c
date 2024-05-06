@@ -5,6 +5,7 @@
 #include "spinlock.h"
 #include "proc.h"
 #include "defs.h"
+#include "lib_os.h"
 
 struct cpu cpus[NCPU];
 
@@ -157,8 +158,26 @@ found:
   memset(&p->context, 0, sizeof(p->context));
   p->context.ra = (uint64)forkret;
   p->context.sp = p->kstack + PGSIZE;
-
   
+  p->pp_map_node = (struct pp_map *)kalloc();
+  p->pp_map_node->pid = p->pid;
+  p->pp_map_node->map = 0;
+  p->pp_map_node->size = 0;
+  p->pp_map_node->func = ghi;
+  struct buffer_node *temp = p->buf;
+  for(int ii=1; ii<=MAX_BUFFER_PAGES; ii++){
+  	struct buffer_node *ttemp = (struct buffer_node *)kalloc();
+  	ttemp->va = 0;
+  	ttemp->content = kalloc();
+  	ttemp->next = 0;
+  	if (ii == 1){
+  		p->buf = ttemp;
+  		temp = p->buf;
+  	}else{
+  		temp->next = ttemp;
+  		temp = temp->next;
+  	}
+  }
   return p;
 }
 
@@ -382,6 +401,8 @@ exit(int status)
       p->ofile[fd] = 0;
     }
   }
+  
+  del_map(p->pid);
 
   begin_op();
   iput(p->cwd);
@@ -703,4 +724,14 @@ procdump(void)
     printf("%d %s %s", p->pid, state, p->name);
     printf("\n");
   }
+}
+
+struct proc *get_proc_from_pid(uint64 pid){
+	struct proc *p;
+	for(p = proc; p < &proc[NPROC];  p++){
+		if(p->pid == pid){
+			return p;
+		}
+	}
+	return 0;
 }
