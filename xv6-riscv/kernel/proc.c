@@ -363,6 +363,10 @@ fork(void)
   acquire(&wait_lock);
   np->parent = p;
   release(&wait_lock);
+  
+  if(p->on_demand == 1){
+  	np->on_demand = 1;
+  }
 
   acquire(&np->lock);
   np->state = RUNNABLE;

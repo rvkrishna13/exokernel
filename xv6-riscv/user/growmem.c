@@ -4,12 +4,12 @@
 #include "kernel/lib_os.h"
 
 int main(){
+    set_on_demand(1);
     int size = 4096*10;
     printf("before fork\n");
     int pid = fork();
     printf("after fork\n");
 	if(pid==0){
-        set_on_demand(1);
         // printf("Before sbrk(%d):\n", size);
         dump_page_table();
         char *p = sbrk(size);
@@ -42,9 +42,11 @@ int main(){
         printf("dumped\n");
         exit(0);
     }else{
+    	char s[35];
+    	s[0] = 'A';
         //uint64 *ptr = (uint64 *) 0x55000;
         //*ptr = 123;
-        printf("ggggg %d\n", pid);
+        printf("ggggg %s\n", s);
         // uint a = *ptr;
         // *ptr = 123;
         //printf("address %d %d\n", *ptr,123);

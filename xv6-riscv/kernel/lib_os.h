@@ -1,7 +1,7 @@
 #include "types.h"
 
-#define MAX_PHY_PAGES 6
-#define MAX_BUFFER_PAGES 15
+#define MAX_PHY_PAGES 20
+#define MAX_BUFFER_PAGES 25
 
 struct user_va_pa_map_node{
 	uint64 va;

@@ -16,9 +16,9 @@ void write_to_buffer(struct proc *p, uint64 va){
 		int x = copyin(p, p->pagetable, temp->content, va, PGSIZE);
 		if (x == 0){
 			temp->va = va;
-			printf("Successful copy to buffer for va %d\n", va);
+			//printf("Successful copy to buffer for va %d\n", va);
 		} else {
-			printf("some problem on va %d %d\n", va, x);
+			//printf("some problem on va %d %d\n", va, x);
 		}
 	}
 }
@@ -151,7 +151,7 @@ void print_all_nodes(){
 }
 
 int handle_swap(uint64 va) {
-	print_all_nodes();
+	//print_all_nodes();
 	struct buffer_node *temp = myproc()->buf;
 	while(temp != 0) {
 		if (temp->va == va){
@@ -170,7 +170,7 @@ void swap_buffer(uint64 va){
 	if (user_node->size >= MAX_PHY_PAGES){
 		uint64 remove_va = user_node->func();
 		if ((uint)remove_va != 0){
-			printf("swaping va %d with remove_va %d\n", va, remove_va);
+			//printf("swaping va %d with remove_va %d\n", va, remove_va);
 			char *paa;
 			paa = kalloc();
 			memset(paa, 0, PGSIZE);
