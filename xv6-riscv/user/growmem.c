@@ -1,9 +1,11 @@
 #include<kernel/syscall.h>
 #include "kernel/types.h"
 #include "user/user.h"
+#include "kernel/lib_os.h"
 
 int main(){
-    int size = 4096*4;
+    set_va_pa_map(2);
+    int size = 4096*5;
 	printf("Before sbrk(%d):\n", size);
     dump_page_table();
     char *p = sbrk(size);

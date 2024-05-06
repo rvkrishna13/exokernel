@@ -5,6 +5,7 @@
 #include "spinlock.h"
 #include "proc.h"
 #include "defs.h"
+#include "lib_os.h"
 
 struct spinlock tickslock;
 uint ticks;
@@ -67,7 +68,16 @@ usertrap(void)
     syscall();
   } else if((which_dev = devintr()) != 0){
     // ok
-  } else {
+  } else if(r_scause() == 13 || r_scause() == 15){
+  	//printf("inside trap %d %d\n", p->buf->va, r_stval());
+  	//if ((p->buf->va >> 12) == (r_stval() >> 12)){
+  		//printf("Inside inside\n");
+  		swap_buffer(r_stval() - r_stval()%4096);
+  	//}
+  	//setkilled(p);
+
+  }
+  else {
     printf("usertrap(): unexpected scause %p pid=%d\n", r_scause(), p->pid);
     printf("            sepc=%p stval=%p\n", r_sepc(), r_stval());
     setkilled(p);
