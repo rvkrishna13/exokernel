@@ -9,14 +9,14 @@
 
 void write_to_buffer(struct proc *p, uint64 va){
 	struct buffer_node *temp = p->buf;
-	while((uint64)temp->va != 0){
+	while(temp!=NULL && ( uint64)temp->va != 0){
 		temp = temp->next;
 	}
 	if ((uint64)temp != 0){
 		int x = copyin(p, p->pagetable, temp->content, va, PGSIZE);
 		if (x == 0){
 			temp->va = va;
-			printf("Successful copy to buffer for va %d\n", va);
+			// printf("Successful copy to buffer for va %d\n", va);
 		} else {
 			printf("some problem on va %d %d\n", va, x);
 		}
@@ -70,7 +70,7 @@ void add_va_pa_map(uint64 va, uint64 pa){
 	new_node->va = va;
 	new_node->pa = pa;
 	new_node->next = 0;
-	printf("Adding Map for pid %d for va %d and pa %d\n", p->pid, new_node->va, new_node->pa);
+	// printf("Adding Map for pid %d for va %d and pa %d\n", p->pid, new_node->va, new_node->pa);
 	p->size++;
 	if ((uint64)p->map == 0){
 		p->map = new_node;

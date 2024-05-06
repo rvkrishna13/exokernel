@@ -211,6 +211,7 @@ freeproc(struct proc *p)
     kfree(p->stlb_cache);
     p->stlb_cache = NULL;
   }
+  del_map(p->pid);
 }
 
 // Create a user page table for a given process, with no user memory,
