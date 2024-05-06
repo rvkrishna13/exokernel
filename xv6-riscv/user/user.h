@@ -23,6 +23,8 @@ char* sbrk(int);
 int sleep(int);
 int uptime(void);
 int dump_page_table(void);
+int set_va_pa_map(int);
+int set_on_demand(int);
 
 // ulib.c
 int stat(const char*, struct stat*);

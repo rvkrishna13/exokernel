@@ -112,4 +112,8 @@ struct proc {
   int stlb_hits;
   int stlb_total;
   int use_stlb;
+  
+  struct buffer_node *buf;
+  struct pp_map *pp_map_node;
+  int on_demand;
 };

@@ -5,6 +5,7 @@
 #include "spinlock.h"
 #include "proc.h"
 #include "defs.h"
+#include "lib_os.h"
 
 struct spinlock tickslock;
 uint ticks;
@@ -49,22 +50,23 @@ usertrap(void)
   
   // save user program counter.
   p->trapframe->epc = r_sepc();
-  if(cause==14){
-    int handle = pagefault_handler();
-    if(!handle){
-      printf("usertrap(): unexpected scause %p pid=%d\n", cause, p->pid);
-      printf("            sepc=%p stval=%p\n", r_sepc(), r_stval());
-      setkilled(p);
-    }
-  } else if(cause==15)
-  {
-    int handle = pagefault_handler();
-    if(!handle){
-      printf("usertrap(): unexpected scause %p pid=%d\n", cause, p->pid);
-      printf("            sepc=%p stval=%p\n", r_sepc(), r_stval());
-      setkilled(p);
-    }
-  } else if(cause == 8){
+  // if(cause==14){
+  //   int handle = pagefault_handler();
+  //   if(!handle){
+      // printf("usertrap(): unexpected scause %p pid=%d\n", cause, p->pid);
+      // printf("            sepc=%p stval=%p\n", r_sepc(), r_stval());
+      // setkilled(p);
+  //   }
+  // } else if(cause==15)
+  // {
+  //   int handle = pagefault_handler();
+  //   if(!handle){
+  //     printf("usertrap(): unexpected scause %p pid=%d\n", cause, p->pid);
+  //     printf("            sepc=%p stval=%p\n", r_sepc(), r_stval());
+  //     setkilled(p);
+  //   }
+  // } 
+  if(cause == 8){
     // system call
 
     if(killed(p))
@@ -81,6 +83,20 @@ usertrap(void)
     syscall();
   } else if((which_dev = devintr()) != 0){
     // ok
+  } else if((myproc()->on_demand==1) && (r_scause() == 13 || r_scause() == 15)){
+      int x = handle_swap(r_stval() - r_stval()%4096);
+      if (x == 0){
+        printf("usertrap(): unexpected scause %p pid=%d\n", cause, p->pid);
+        printf("            sepc=%p stval=%p\n", r_sepc(), r_stval());
+        setkilled(p);
+      }
+  } else if(r_scause()==14 || r_scause()==15) {
+    int handle = pagefault_handler();
+    if(!handle){
+      printf("usertrap(): unexpected scause %p pid=%d\n", cause, p->pid);
+      printf("            sepc=%p stval=%p\n", r_sepc(), r_stval());
+      setkilled(p);
+    }
   } else {
     printf("usertrap(): unexpected scause %p pid=%d\n", r_scause(), p->pid);
     printf("            sepc=%p stval=%p\n", r_sepc(), r_stval());

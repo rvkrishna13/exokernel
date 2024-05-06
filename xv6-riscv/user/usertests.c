@@ -2598,10 +2598,8 @@ struct test {
   {preempt, "preempt"},
   {exitwait, "exitwait"},
   {reparent, "reparent" },
-  // {twochildren, "twochildren"},
   {forkfork, "forkfork"},
   {forkforkfork, "forkforkfork"},
-  // {reparent2, "reparent2"},
   {mem, "mem"},
   {sharedfd, "sharedfd"},
   {fourfiles, "fourfiles"},
@@ -2619,9 +2617,7 @@ struct test {
   {iref, "iref"},
   {forktest, "forktest"},
   {sbrkbasic, "sbrkbasic"},
-  // {sbrkmuch, "sbrkmuch"},
   {kernmem, "kernmem"},
-  // {MAXVAplus, "MAXVAplus"},
   {sbrkfail, "sbrkfail"},
   {sbrkarg, "sbrkarg"},
   {validatetest, "validatetest"},
@@ -2629,7 +2625,6 @@ struct test {
   {bigargtest, "bigargtest"},
   {argptest, "argptest"},
   {stacktest, "stacktest"},
-  // {textwrite, "textwrite"},
   {pgbug, "pgbug" },
   {sbrkbugs, "sbrkbugs" },
   {sbrklast, "sbrklast"},
@@ -3091,7 +3086,8 @@ main(int argc, char *argv[])
   int continuous = 0;
   int quick = 0;
   char *justone = 0;
-
+  int start,end;
+  start = uptime();
   if(argc == 2 && strcmp(argv[1], "-q") == 0){
     quick = 1;
   } else if(argc == 2 && strcmp(argv[1], "-c") == 0){
@@ -3106,5 +3102,7 @@ main(int argc, char *argv[])
     exit(1);
   }
   printf("ALL TESTS PASSED\n");
+  end = uptime();
+  printf("Time taken : %d ticks\n", end-start);
   exit(0);
 }
