@@ -26,10 +26,8 @@ struct {
 void
 kinit()
 {
-  printf("kinit start\n");
   initlock(&kmem.lock, "kmem");
   freerange(end, (void*)PHYSTOP);
-  printf("kinit end\n");
 }
 
 void

@@ -107,5 +107,15 @@ sys_set_va_pa_map(void){
 	return 0;
 }
 
+uint64
+sys_set_on_demand(void){
+  int x;
+  argint(0, &x);
+  if (x==1){
+    myproc()->on_demand = 1;
+  }
+  return 0;
+}
+
 
 

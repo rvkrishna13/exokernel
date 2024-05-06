@@ -115,4 +115,5 @@ struct proc {
   
   struct buffer_node *buf;
   struct pp_map *pp_map_node;
+  int on_demand;
 };

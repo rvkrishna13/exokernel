@@ -241,7 +241,7 @@ uvmunmap(pagetable_t pagetable, uint64 va, uint64 npages, int do_free)
       panic("uvmunmap: walk");
     if((*pte & PTE_V) == 0)
     	continue;
-      //panic("uvmunmap: not mapped");
+      // panic("uvmunmap: not mapped");
     if(PTE_FLAGS(*pte) == PTE_V)
       panic("uvmunmap: not a leaf");
     if(do_free){
@@ -294,6 +294,7 @@ uvmalloc(struct proc *proc, pagetable_t pagetable, uint64 oldsz, uint64 newsz, i
 
   oldsz = PGROUNDUP(oldsz);
   for(a = oldsz; a < newsz; a += PGSIZE){
+    if(myproc()->on_demand == 1)
     try_alloc_page();
     
     mem = kalloc();
@@ -307,6 +308,7 @@ uvmalloc(struct proc *proc, pagetable_t pagetable, uint64 oldsz, uint64 newsz, i
       uvmdealloc(pagetable, a, oldsz);
       return 0;
     }
+    if(myproc()->on_demand == 1)
     add_va_pa_map(a, (uint64)mem);
     //print_all_user_map();
   }
@@ -379,8 +381,10 @@ uvmcopy(pagetable_t old, pagetable_t new, struct proc *proc, uint64 sz)
   for(i = 0; i < sz; i += PGSIZE){
     if((pte = walk(old, i, 0)) == 0)
       panic("uvmcopy: pte should exist");
-    if((*pte & PTE_V) == 0)
+    if((*pte & PTE_V) == 0) {
+      printf("I got u\n");
       panic("uvmcopy: page not present");
+    }
     pa = PTE2PA(*pte);
     flags = PTE_FLAGS(*pte);
     if((mem = kalloc()) == 0)
@@ -452,9 +456,7 @@ copyin(struct proc *proc, pagetable_t pagetable, char *dst, uint64 srcva, uint64
     n = PGSIZE - (srcva - va0);
     if(n > len)
       n = len;
-    if (len == 10){
-    	printf("In copyin function havinf va0 %d %p and pa0 %d %p with n %d\n",va0, va0, pa0, pa0, n);
-    }
+    
     memmove(dst, (void *)(pa0 + (srcva - va0)), n);
 
     len -= n;

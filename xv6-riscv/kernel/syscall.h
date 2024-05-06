@@ -22,3 +22,4 @@
 #define SYS_close  21
 #define SYS_dump_page_table 22
 #define SYS_set_va_pa_map 23
+#define SYS_set_on_demand 24

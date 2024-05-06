@@ -53,9 +53,9 @@ usertrap(void)
   // if(cause==14){
   //   int handle = pagefault_handler();
   //   if(!handle){
-  //     printf("usertrap(): unexpected scause %p pid=%d\n", cause, p->pid);
-  //     printf("            sepc=%p stval=%p\n", r_sepc(), r_stval());
-  //     setkilled(p);
+      // printf("usertrap(): unexpected scause %p pid=%d\n", cause, p->pid);
+      // printf("            sepc=%p stval=%p\n", r_sepc(), r_stval());
+      // setkilled(p);
   //   }
   // } else if(cause==15)
   // {
@@ -83,11 +83,17 @@ usertrap(void)
     syscall();
   } else if((which_dev = devintr()) != 0){
     // ok
-  } else if(r_scause() == 13 || r_scause() == 15){
+  } else if((myproc()->on_demand==1) && (r_scause() == 13 || r_scause() == 15)){
   	//printf("inside trap %d %d\n", p->buf->va, r_stval());
   	//if ((p->buf->va >> 12) == (r_stval() >> 12)){
   		//printf("Inside inside\n");
-  		swap_buffer(r_stval() - r_stval()%4096);
+  		//swap_buffer(r_stval() - r_stval()%4096);
+      int x = handle_swap(r_stval() - r_stval()%4096);
+      if (x == 0){
+        printf("usertrap(): unexpected scause %p pid=%d\n", cause, p->pid);
+        printf("            sepc=%p stval=%p\n", r_sepc(), r_stval());
+        setkilled(p);
+      }
   	//}
   	//setkilled(p);
 

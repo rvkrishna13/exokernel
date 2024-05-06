@@ -155,6 +155,7 @@ found:
 
   // Set up new context to start executing at forkret,
   // which returns to user space.
+  p->on_demand = 0;
   memset(&p->context, 0, sizeof(p->context));
   p->context.ra = (uint64)forkret;
   p->context.sp = p->kstack + PGSIZE;
@@ -187,6 +188,7 @@ found:
 static void
 freeproc(struct proc *p)
 {
+    //del_map(p->pid);
   if(p->stlb_hits > 0)
     printf("PID : %d total stlb_hits : %d from stlb_search : %d\n", p->pid, p->stlb_hits, p->stlb_total);
   if(p->trapframe)
@@ -206,12 +208,13 @@ freeproc(struct proc *p)
   p->killed = 0;
   p->xstate = 0;
   p->state = UNUSED;
-  
+
+
   if(p->stlb_cache!=NULL){
     kfree(p->stlb_cache);
     p->stlb_cache = NULL;
   }
-  del_map(p->pid);
+  
 }
 
 // Create a user page table for a given process, with no user memory,

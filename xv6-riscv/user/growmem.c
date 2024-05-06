@@ -5,9 +5,12 @@
 
 int main(){
     int size = 4096*10;
-    int pid = 0;
+    printf("before fork\n");
+    int pid = fork();
+    printf("after fork\n");
 	if(pid==0){
-        printf("Before sbrk(%d):\n", size);
+        set_on_demand(1);
+        // printf("Before sbrk(%d):\n", size);
         dump_page_table();
         char *p = sbrk(size);
         if (p == (char *)-1) {
@@ -36,14 +39,15 @@ int main(){
         // printf("third loop done %c\n",a);
         // printf("After sbrk(%d):\n", size);
         // printf("process pid is %d\n", getpid());
-        // printf("dumped\n");
+        printf("dumped\n");
         exit(0);
     }else{
-        uint64 *ptr = (uint64 *) 0x55000;
-        *ptr = 123;
+        //uint64 *ptr = (uint64 *) 0x55000;
+        //*ptr = 123;
+        printf("ggggg %d\n", pid);
         // uint a = *ptr;
         // *ptr = 123;
-        printf("address %d %d\n", *ptr,123);
+        //printf("address %d %d\n", *ptr,123);
         wait(&pid);
     }
     
