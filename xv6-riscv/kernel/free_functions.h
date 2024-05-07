@@ -12,6 +12,9 @@ uint64 func1(){ // LIFO - Last In First Out
 uint64 func2(){ // FIFO - First In First Out
 	struct pp_map *temp = myproc()->pp_map_node;
 	struct user_va_pa_map_node *root = temp->map;
+	if((uint64)root == 0){
+		return 0;
+	}
 	uint64 xx = root->va;
 	return xx;
 }

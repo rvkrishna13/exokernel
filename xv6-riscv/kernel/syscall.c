@@ -104,6 +104,7 @@ extern uint64 sys_close(void);
 extern uint64 sys_dump_page_table(void);
 extern uint64 sys_set_va_pa_map(void);
 extern uint64 sys_set_on_demand(void);
+extern uint64 sys_print_nodes(void);
 
 // An array mapping syscall numbers from syscall.h
 // to the function that handles the system call.
@@ -132,6 +133,7 @@ static uint64 (*syscalls[])(void) = {
 [SYS_dump_page_table] sys_dump_page_table,
 [SYS_set_va_pa_map] sys_set_va_pa_map,
 [SYS_set_on_demand] sys_set_on_demand,
+[SYS_print_nodes] sys_print_nodes,
 };
 
 void
