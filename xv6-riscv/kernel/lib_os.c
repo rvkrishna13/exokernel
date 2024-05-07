@@ -77,8 +77,8 @@ void add_va_pa_map(uint64 va, uint64 pa){
 	new_node->va = va;
 	new_node->pa = pa;
 	new_node->next = 0;
-	printf("Adding Map for pid %d for va %d and pa %d\n", p->pid, new_node->va, new_node->pa);
-	p->size++;
+	//printf("Adding Map for pid %d for va %d and pa %d\n", p->pid, new_node->va, new_node->pa);
+	++p->size;
 	if ((uint64)p->map == 0){
 		p->map = new_node;
 		return;
@@ -92,6 +92,9 @@ void add_va_pa_map(uint64 va, uint64 pa){
 
 void rm_node_user(struct pp_map *user, uint64 va){
 	struct user_va_pa_map_node *root = user->map;
+	if((uint64)root == 0)
+		return;
+	struct pp_map *pp = myproc()->pp_map_node;
 	struct user_va_pa_map_node *prev = 0;
 	while((uint64)root !=0 && root->va != va){
 		prev = root;
@@ -102,7 +105,8 @@ void rm_node_user(struct pp_map *user, uint64 va){
 	}else{
 		prev->next = root->next;
 	}
-	// printf("Deleting for map node for va %d %p\n", root->va);
+	--pp->size;
+	//printf("Deleting for map node for va %d %p\n", root->va);
 	kfree(root);
 }
 
@@ -115,9 +119,8 @@ void try_alloc_page(){
 		if ((uint)remove_va != 0){
 			write_to_buffer(pp, remove_va);
 			uvmunmap(pp->pagetable, remove_va, 1, 1);
-			rm_node_user(user_node, remove_va);
+			//rm_node_user(user_node, remove_va);
 			asm volatile("sfence.vma %0" : : "r"(remove_va));
-			user_node->size--;
 		}
 	}
 }
@@ -143,11 +146,15 @@ struct buffer_node *get_empty_node(struct buffer_node *temp){
 }
 
 void print_all_nodes(){
+	printf("--------  Printing VA PA Ma  ---------\n");
 	struct user_va_pa_map_node *root = myproc()->pp_map_node->map;
+	int count = 0;
 	while((uint64)root != 0){
-		printf("Printing va %d %p\n", root->va, root->va);
+		printf("Mapping va %d to pa %p\n", root->va, root->pa);
 		root = root->next;
+		count++;
 	}
+	printf("Total %d pages\n", count);
 }
 
 int handle_swap(uint64 va) {
@@ -185,7 +192,7 @@ void swap_buffer(uint64 va){
 
 			emp->va = remove_va;
 			uvmunmap(pp->pagetable, remove_va, 1, 1);
-			rm_node_user(user_node, remove_va);
+			//rm_node_user(user_node, remove_va);
 			asm volatile("sfence.vma %0" : : "r"(remove_va));
 			asm volatile("sfence.vma %0" : : "r"(va));
 			return;

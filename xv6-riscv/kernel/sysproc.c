@@ -117,5 +117,11 @@ sys_set_on_demand(void){
   return 0;
 }
 
+uint64
+sys_print_nodes(void){
+	print_all_nodes();
+	return 0;
+}
+
 
 

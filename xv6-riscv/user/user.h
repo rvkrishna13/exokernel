@@ -25,6 +25,7 @@ int uptime(void);
 int dump_page_table(void);
 int set_va_pa_map(int);
 int set_on_demand(int);
+int print_nodes(void);
 
 // ulib.c
 int stat(const char*, struct stat*);

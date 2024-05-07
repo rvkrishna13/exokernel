@@ -249,6 +249,8 @@ uvmunmap(pagetable_t pagetable, uint64 va, uint64 npages, int do_free)
       kfree((void*)pa);
     }
     *pte = 0;
+    if(myproc()->on_demand == 1)
+    rm_node_user(myproc()->pp_map_node, a);
   }
 }
 

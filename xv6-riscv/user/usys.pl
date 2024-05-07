@@ -39,3 +39,4 @@ entry("uptime");
 entry("dump_page_table");
 entry("set_va_pa_map");
 entry("set_on_demand");
+entry("print_nodes");
